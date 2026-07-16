@@ -443,6 +443,12 @@ body.mobile .dino-reflection.intro-start {
   visibility: hidden;
   transform: translateX(16px);
   transition: opacity 500ms ease-out, transform 500ms ease-out, visibility 0s linear 0s;
+  /* every other animated element in this file (.stage, .dino-sprite,
+     .cactus, ...) has a will-change hint so the browser promotes it to its
+     own compositor layer up front; this one didn't, so that promotion may
+     only have happened reactively — right as the digit sheet image below
+     finished decoding — which lines up with exactly when the flash showed */
+  will-change: opacity, transform;
 }
 
 .score-display.visible .fade-in-right {
