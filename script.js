@@ -283,13 +283,25 @@ let scoreIntervalId = null;
 function renderDigits(container, folder, number) {
   const digitCount = Math.max(MIN_SCORE_DIGITS, String(number).length);
   const digits = String(number).padStart(digitCount, "0");
-  container.innerHTML = "";
-  for (const digit of digits) {
-    const glyph = document.createElement("div");
-    glyph.className = "glyph";
-    glyph.style.backgroundImage = `url("Sprites/Glyphs/${folder}/${digit}.png")`;
-    container.appendChild(glyph);
+
+  // updates only the glyphs that actually changed digit, instead of wiping
+  // and recreating every glyph element on every tick (every SCORE_TICK_MS)
+  // — since score only ever increases by round amounts, most ticks don't
+  // change most digits at all, and the constant rebuild-from-scratch was
+  // what caused the score to visibly flicker on mobile
+  while (container.children.length > digits.length) {
+    container.lastElementChild.remove();
   }
+  while (container.children.length < digits.length) {
+    container.appendChild(document.createElement("div")).className = "glyph";
+  }
+
+  [...digits].forEach((digit, i) => {
+    const glyph = container.children[i];
+    if (glyph.dataset.digit === digit) return;
+    glyph.dataset.digit = digit;
+    glyph.style.backgroundImage = `url("Sprites/Glyphs/${folder}/${digit}.png")`;
+  });
 }
 
 function updateScoreDisplay() {

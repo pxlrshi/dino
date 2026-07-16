@@ -5,12 +5,18 @@
 html, body {
   height: 100%;
   margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* `overflow: hidden` alone doesn't stop mobile browsers from panning/
+     rubber-banding the page on a finger drag — that's a touch-gesture
+     behavior, not a scroll-the-content one, so it needs disabling
+     separately here */
+  touch-action: none;
 }
 
 body {
   font-family: "Space Mono", "SF Mono", Menlo, Consolas, monospace;
   background: #ffffff;
-  overflow: hidden;
 }
 
 .stage-wrapper {
