@@ -1,0 +1,605 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Space Mono", "SF Mono", Menlo, Consolas, monospace;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.stage-wrapper {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage-wrapper.shake {
+  /* .stage already carries a JS-driven scale() transform for fit-to-window,
+     so the shake animates this wrapper instead to avoid clobbering it */
+  animation: screen-shake 280ms ease-out;
+}
+
+@keyframes screen-shake {
+  0% {
+    transform: translate(0, 0);
+  }
+  15% {
+    transform: translate(-3px, 1.5px);
+  }
+  30% {
+    transform: translate(2.5px, -1.5px);
+  }
+  45% {
+    transform: translate(-2px, 1px);
+  }
+  60% {
+    transform: translate(1.5px, -0.75px);
+  }
+  75% {
+    transform: translate(-0.75px, 0.5px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.stage {
+  position: relative;
+  width: 1440px;
+  height: 1024px;
+  flex: none;
+  background: #ffffff;
+  will-change: transform;
+}
+
+/* the mobile layout is a bespoke composition (see script.js for the matching
+   game-logic constants — stage size, dino/cactus positions and scale), not
+   just the desktop design scaled down; body.mobile is toggled by
+   updateLayout() in script.js based on viewport orientation */
+body.mobile .stage {
+  width: 390px;
+  height: 844px;
+}
+
+.letterbox-bar {
+  position: fixed;
+  left: 0;
+  width: 100vw;
+  height: 6.25vh;
+  background: #000000;
+  z-index: 10;
+  transition: transform 400ms ease-out;
+}
+
+body.mobile .letterbox-bar {
+  /* 192px of a 844px-tall mobile stage */
+  height: 22.75vh;
+}
+
+.letterbox-bar.top {
+  top: 0;
+  transform: translateY(-100%);
+}
+
+.letterbox-bar.bottom {
+  bottom: 0;
+  transform: translateY(100%);
+}
+
+.letterbox-bar.visible {
+  transform: translateY(0);
+}
+
+.ground-line {
+  display: none;
+  position: absolute;
+  left: 256px;
+  /* aligned to the sprite's own pixel grid: the 170x190 art is drawn in 10px
+     logical pixels, displayed at a 70/170 scale, so each logical pixel is
+     ~4.12px on screen; this sits exactly on the row boundary where the
+     ankles/feet begin (native row 16 of 19) */
+  top: 538.76px;
+  width: 70px;
+  height: 4px;
+  background: #333941;
+  transition: left 450ms ease-out, width 450ms ease-out;
+}
+
+.ground-line.running {
+  left: 0;
+  width: 1440px;
+}
+
+.cactus {
+  position: absolute;
+  /* `bottom` is set inline per spawn (see spawnCactus() in script.js), from
+     the active layout's cactusBottomY — desktop and mobile use different
+     ground levels, so this can't be a static value here */
+  /* each animation set is a single combined sprite sheet (script.js sets
+     background-image/background-size once per sheet, then only shifts
+     background-position-x to advance frames — see createSpriteAnimator) */
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  /* movement is driven by `transform: translateX()` every frame (see
+     updateObstacles() in script.js) rather than `left`, and this hints the
+     browser to keep it on a stable compositing layer — using a layout
+     property for continuous per-frame movement was forcing a full
+     layout+paint pass every frame, which flickered the pixelated art */
+  will-change: transform;
+}
+
+.cactus-reflection {
+  position: absolute;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transform: scaleY(-1);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.dino-sprite {
+  position: absolute;
+  left: 253px;
+  top: 457px;
+  width: 85px;
+  height: 95px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  will-change: transform;
+}
+
+body.mobile .dino-sprite {
+  left: 32px;
+  top: 361px;
+  width: 42.5px;
+  height: 47.5px;
+}
+
+.dino-sprite.intro-start {
+  left: -160px;
+}
+
+/* body.mobile .dino-sprite's extra type-selector specificity would otherwise
+   beat .dino-sprite.intro-start's off-screen position on load */
+body.mobile .dino-sprite.intro-start {
+  left: -160px;
+}
+
+.dino-sprite.intro-run {
+  transition: left 1400ms linear;
+}
+
+.dino-sprite.knocked-back {
+  /* fast off the point of impact, decelerating into the despawn point —
+     reuses the same easeOutQuint feel as the jump's rising phase */
+  transition: left 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dino-reflection {
+  /* a real element (not a ::after pseudo like .cactus) so its vertical
+     position can be driven independently of .dino-sprite's own jump
+     transform — see jumpTick() in script.js, which moves this the opposite
+     direction the dino jumps instead of letting it follow along, by
+     overriding this default `transform` inline during the jump */
+  position: absolute;
+  left: 253px;
+  top: 552px;
+  width: 85px;
+  height: 95px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transform: scaleY(-1);
+  opacity: 0.25;
+  pointer-events: none;
+  will-change: transform;
+}
+
+body.mobile .dino-reflection {
+  left: 32px;
+  top: 408.5px;
+  width: 42.5px;
+  height: 47.5px;
+}
+
+.dino-reflection.intro-start {
+  left: -160px;
+}
+
+body.mobile .dino-reflection.intro-start {
+  left: -160px;
+}
+
+.dino-reflection.intro-run {
+  transition: left 1400ms linear;
+}
+
+.dino-reflection.knocked-back {
+  transition: left 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.headline {
+  position: absolute;
+  left: 256px;
+  top: 616px;
+  margin: 0;
+  font-family: "Space Mono", monospace;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: normal;
+  color: #333941;
+  white-space: nowrap;
+}
+
+.try-label {
+  position: absolute;
+  left: 256px;
+  top: 690px;
+  margin: 0;
+  font-family: "Space Mono", monospace;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: normal;
+  color: #6d758d;
+}
+
+.try-list {
+  position: absolute;
+  left: 272px;
+  top: 737px;
+  width: 461px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* the alive/dead copy swap animates in two JS-orchestrated steps (see
+   die()/resetGame() in script.js), since `display` itself can't transition:
+   1. .copy-fading fades the alive copy out in place
+   2. once that finishes, .is-dead swaps which copy is in the document flow
+      (dead-only starts at opacity 0 the instant it appears)
+   3. .copy-visible (added a frame later) fades the dead copy in */
+.alive-only,
+.dead-only {
+  opacity: 1;
+  transition: opacity 250ms ease-out;
+}
+
+.dead-only {
+  display: none;
+  opacity: 0;
+}
+
+.copy-fading .alive-only {
+  opacity: 0;
+}
+
+.is-dead .alive-only {
+  display: none;
+}
+
+.is-dead .dead-only {
+  display: inline;
+}
+
+.is-dead.copy-visible .dead-only {
+  opacity: 1;
+}
+
+.stat-value {
+  color: #333941;
+}
+
+.try-list li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 31px;
+  font-family: "Space Mono", monospace;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: normal;
+  color: #6d758d;
+  white-space: nowrap;
+}
+
+.portfolio-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 4px;
+  text-underline-offset: 3px;
+}
+
+.portfolio-link:hover {
+  text-decoration: none;
+}
+
+.bullet {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #6d758d;
+}
+
+.signature {
+  position: absolute;
+  left: 256px;
+  top: 847px;
+  margin: 0;
+  font-family: "Space Mono", monospace;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: normal;
+  color: #b3b9d1;
+}
+
+.key-badge-wrapper {
+  /* reserves the same footprint in the list row's flex layout that
+     .key-badge used to occupy, so the resting position doesn't move —
+     .key-badge is absolutely positioned inside it, anchored to the
+     bottom, so the press animation only moves the top edge */
+  position: relative;
+  flex: none;
+  width: 99px;
+  height: 42px;
+}
+
+.key-badge {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 99px;
+  height: 42px;
+  box-sizing: border-box;
+  border: 3px solid #6d758d;
+  border-radius: 12px;
+  background: linear-gradient(to bottom, #b3b9d1 0%, #b3b9d1 75%, #8b93af 100%);
+  transition: height 80ms ease-out;
+}
+
+.key-badge.pressed {
+  /* the whole button compresses (not just the inner face sliding down),
+     shrinking the bottom lip from 16px to 8px */
+  height: 34px;
+}
+
+.key-badge-face {
+  flex: none;
+  width: 100%;
+  height: 23px;
+  box-sizing: border-box;
+  border: 2px solid #b3b9d1;
+  border-radius: 10px;
+  background: linear-gradient(to bottom, #ffffff 0%, #dae0ea 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Space Mono", monospace;
+  font-weight: 700;
+  font-size: 12px;
+  color: #6d758d;
+}
+
+.animate-in {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 500ms ease-out, transform 500ms ease-out;
+}
+
+.animate-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-in-right {
+  opacity: 0;
+  transform: translateX(16px);
+  transition: opacity 500ms ease-out, transform 500ms ease-out;
+}
+
+.score-display.visible .fade-in-right {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.delay-0 {
+  transition-delay: 0ms;
+}
+
+.delay-1 {
+  transition-delay: 90ms;
+}
+
+.delay-2 {
+  transition-delay: 180ms;
+}
+
+.delay-3 {
+  transition-delay: 270ms;
+}
+
+.delay-4 {
+  transition-delay: 360ms;
+}
+
+.score-display {
+  position: absolute;
+  left: 256px;
+  top: 144px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hiscore-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hi-icon {
+  flex: none;
+  width: 65px;
+  height: 55px;
+  background-image: url("Sprites/Glyphs/Hiscore/hi.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.digit-group {
+  display: flex;
+}
+
+.glyph {
+  flex: none;
+  width: 40px;
+  height: 55px;
+  margin-right: -5px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.glyph:last-child {
+  margin-right: 0;
+}
+
+/* ===== Mobile layout (body.mobile, toggled by updateLayout() in script.js
+   based on viewport orientation) =====
+   A bespoke portrait composition (390x844, iPhone 13/14), not the desktop
+   design scaled down — every sprite/glyph is shown at exactly half its
+   desktop display size, but positions are their own thing entirely. The
+   matching game-logic constants (stage size, dino/cactus ground position,
+   collision math) live in script.js's MOBILE_LAYOUT. */
+
+body.mobile .score-display {
+  left: 32px;
+  top: 235px;
+  gap: 7px;
+}
+
+body.mobile .hiscore-row {
+  gap: 8px;
+}
+
+body.mobile .hi-icon {
+  width: 32.5px;
+  height: 27.5px;
+}
+
+body.mobile .glyph {
+  width: 20px;
+  height: 27.5px;
+  margin-right: -2.5px;
+}
+
+body.mobile .headline {
+  left: 32px;
+  top: 441px;
+  width: 326px;
+  font-size: 16px;
+  white-space: normal;
+}
+
+body.mobile .try-label {
+  left: 32px;
+  top: 505px;
+  font-size: 12px;
+}
+
+body.mobile .try-list {
+  left: 48px;
+  top: 531px;
+  width: auto;
+  gap: 8px;
+}
+
+body.mobile .try-list li {
+  gap: 8px;
+  height: auto;
+  font-size: 12px;
+}
+
+body.mobile .bullet {
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+}
+
+body.mobile .signature {
+  left: 32px;
+  top: 591px;
+  font-size: 12px;
+}
+
+/* the try-list's first item has entirely separate desktop/mobile copy (a
+   physical-key badge and "pressing the"/"hit the" phrasing makes no sense
+   without a spacebar), gated by platform rather than just resized */
+.desktop-only,
+.mobile-only {
+  display: none;
+}
+
+/* desktop copy that isn't also alive/dead-gated (the key-badge itself,
+   shown in both game states) */
+body:not(.mobile) .desktop-only:not(.alive-only):not(.dead-only) {
+  display: inline;
+}
+
+body:not(.mobile) .desktop-only.alive-only {
+  display: inline;
+}
+
+body:not(.mobile) .is-dead .desktop-only.dead-only {
+  display: inline;
+}
+
+body.mobile .mobile-only.alive-only {
+  display: inline;
+}
+
+body.mobile .is-dead .mobile-only.dead-only {
+  display: inline;
+}
+
+/* death always hides the alive copy, on whichever platform it belongs to —
+   needs to outrank the platform "show while alive" rules above */
+.is-dead .desktop-only.alive-only,
+.is-dead .mobile-only.alive-only {
+  display: none !important;
+}
+
+/* the pre-existing generic `.is-dead .dead-only { display: inline; }` rule
+   (above) would otherwise also show the WRONG platform's dead-only copy —
+   this needs to outrank that */
+body.mobile .is-dead .desktop-only.dead-only,
+body:not(.mobile) .is-dead .mobile-only.dead-only {
+  display: none !important;
+}

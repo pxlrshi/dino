@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dino</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="letterbox-bar top" id="letterbox-top"></div>
+  <div class="letterbox-bar bottom" id="letterbox-bottom"></div>
+  <div class="stage-wrapper">
+    <main class="stage">
+      <div class="score-display" id="score-display">
+        <div class="hiscore-row fade-in-right delay-0">
+          <div class="hi-icon"></div>
+          <div class="digit-group" id="hiscore-digits"></div>
+        </div>
+        <div class="digit-group fade-in-right delay-1" id="score-digits"></div>
+      </div>
+
+      <div class="ground-line" id="ground-line"></div>
+      <div class="dino-sprite intro-start" id="dino-sprite" role="img" aria-label="A small pixel-art dinosaur idling"></div>
+      <div class="dino-reflection intro-start" id="dino-reflection" aria-hidden="true"></div>
+
+      <h1 class="headline animate-in delay-0">
+        <span class="alive-only">your internet connection is totally fine.</span>
+        <span class="dead-only">ouch, you just got cactus&rsquo;d!</span>
+      </h1>
+
+      <p class="try-label animate-in delay-1">
+        <span class="alive-only">try:</span>
+        <span class="dead-only">you:</span>
+      </p>
+
+      <ul class="try-list">
+        <li class="animate-in delay-2">
+          <span class="bullet"></span>
+          <span class="desktop-only alive-only">pressing the</span>
+          <span class="desktop-only dead-only">hit the</span>
+          <span class="desktop-only key-badge-wrapper"><span class="key-badge"><span class="key-badge-face">SPACE BAR</span></span></span>
+          <span class="desktop-only dead-only"><span class="stat-value jump-count-value">0</span> TIMES. press it again to retry.</span>
+          <span class="mobile-only alive-only">tapping the screen</span>
+          <span class="mobile-only dead-only">tapped <span class="stat-value jump-count-value">0</span> TIMES. tap again to retry.</span>
+        </li>
+        <li class="animate-in delay-3">
+          <span class="bullet"></span>
+          <span class="alive-only">hiring <a href="https://rishi.design" target="_blank" rel="noopener noreferrer" class="portfolio-link">me</a></span>
+          <span class="dead-only">lasted <span class="stat-value survival-time-value">0M 0S.</span></span>
+        </li>
+      </ul>
+
+      <p class="signature animate-in delay-4">RISHI_MADE_THIS</p>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
