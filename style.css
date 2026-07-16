@@ -80,8 +80,14 @@ body.mobile .stage {
 }
 
 body.mobile .letterbox-bar {
-  /* 192px of a 844px-tall mobile stage */
-  height: 22.75vh;
+  /* down from the original 22.75vh (192px of an 844px-tall mobile stage) —
+     that left too little clearance below the try-list/signature, since
+     `vh` is measured against the viewport with mobile browser chrome (the
+     address bar, etc.) collapsed, while the stage itself is scaled to fit
+     whatever height is ACTUALLY visible right now; `dvh` tracks that real
+     visible height instead, and the smaller value adds a safety margin on
+     top of that fix */
+  height: 14dvh;
 }
 
 .letterbox-bar.top {
