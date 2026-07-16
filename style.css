@@ -507,7 +507,12 @@ body.mobile .dino-reflection.intro-start {
 
 body.mobile .score-display {
   left: 32px;
-  top: 235px;
+  /* raised from 235px — at the top of a jump the dino's sprite (resting
+     top: 361px in .dino-sprite above) rises by up to
+     MOBILE_LAYOUT.jumpPeakHeightPx (85px, see script.js), putting its own
+     top edge at 276px; this keeps the display's bottom edge above that
+     with room to spare, so a full-height jump no longer covers the score */
+  top: 190px;
   gap: 7px;
 }
 

@@ -36,7 +36,8 @@ const JUMP_SHEET = dinoSheet("Sprites/Sheets/dino-jump.png", 10);
 // falling (a higher, longer jump) — height and duration both scale with how
 // long space is held
 const JUMP_RISE_DURATION_MS = 180; // time to climb to full peak height if held the whole way
-const JUMP_PEAK_HEIGHT_PX = 170; // full peak height for a max-length hold
+// peak height itself is layout.jumpPeakHeightPx (see DESKTOP_LAYOUT/MOBILE_LAYOUT below) —
+// it scales with the rest of the mobile composition, unlike this timing, which doesn't
 const JUMP_MIN_RISE_MS = 60; // even the quickest tap rises for at least this long
 const JUMP_MAX_HANG_MS = 220; // longest a hold can extend the hang at the peak
 const JUMP_FALL_DURATION_MS = 180; // time to fall from full peak height (scales down for shorter hops)
@@ -101,6 +102,7 @@ const DESKTOP_LAYOUT = {
   cactusEdgeFadePx: 120, // off-screen spawn/despawn/fade buffer
   cactusGroupGapPx: 65, // cactus width (60) + a 1-artwork-pixel gap (5)
   cactusMinGapPx: 255, // dino width (85) * 3
+  jumpPeakHeightPx: 170, // full peak height for a max-length hold
 };
 
 const MOBILE_LAYOUT = {
@@ -113,6 +115,13 @@ const MOBILE_LAYOUT = {
   cactusEdgeFadePx: 60,
   cactusGroupGapPx: 32.5, // half of the desktop value, matching cactusScale
   cactusMinGapPx: 127.5, // dino width (42.5) * 3
+  // half of the desktop value, matching every other mobile dimension's 0.5
+  // scale — a full-height desktop-scale jump rose well above the dino's own
+  // resting position by more than the mobile score display's height, so at
+  // full peak the sprite covered the score; this keeps the same jump-height
+  // to dino-height ratio (was covering it, see body.mobile .score-display's
+  // own comment in style.css for the other half of this fix)
+  jumpPeakHeightPx: 85,
 };
 
 let layout = DESKTOP_LAYOUT;
@@ -392,7 +401,7 @@ function beginFalling(heightAtRelease) {
   jumpHeightAtFallStart = heightAtRelease;
   // a shorter hop falls back down faster than a full-height jump
   jumpFallDurationMs = Math.max(
-    JUMP_FALL_DURATION_MS * (heightAtRelease / JUMP_PEAK_HEIGHT_PX),
+    JUMP_FALL_DURATION_MS * (heightAtRelease / layout.jumpPeakHeightPx),
     JUMP_FALL_DURATION_MS * 0.35
   );
 }
@@ -405,7 +414,7 @@ function jumpTick(timestamp) {
 
   if (jumpPhase === "rising") {
     const t = Math.min(elapsed / JUMP_RISE_DURATION_MS, 1);
-    height = JUMP_PEAK_HEIGHT_PX * easeOutQuint(t);
+    height = layout.jumpPeakHeightPx * easeOutQuint(t);
     setJumpFrame(Math.min(Math.floor(t * 4), 3));
 
     if (!jumpHeld && elapsed >= JUMP_MIN_RISE_MS) {
@@ -413,10 +422,10 @@ function jumpTick(timestamp) {
     } else if (t >= 1) {
       jumpPhase = "hanging";
       jumpPhaseStartTime = timestamp;
-      height = JUMP_PEAK_HEIGHT_PX;
+      height = layout.jumpPeakHeightPx;
     }
   } else if (jumpPhase === "hanging") {
-    height = JUMP_PEAK_HEIGHT_PX;
+    height = layout.jumpPeakHeightPx;
     setJumpFrame(4 + (Math.floor(elapsed / 90) % 2));
 
     if (!jumpHeld || elapsed >= JUMP_MAX_HANG_MS) {
