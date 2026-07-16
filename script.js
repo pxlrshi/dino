@@ -57,11 +57,17 @@ const MIN_SCORE_DIGITS = 3;
 const SCORE_TICK_MS = 100;
 const HI_SCORE_STORAGE_KEY = "dino-hi-score";
 
-const GLYPH_SRCS = [];
-for (let d = 0; d <= 9; d += 1) {
-  GLYPH_SRCS.push(`Sprites/Glyphs/Score/${d}.png`, `Sprites/Glyphs/Hiscore/${d}.png`);
+// combined 0-9 sheets (Sprites/Sheets/{folder}-digits.png), same technique
+// as the dino/cactus sheets — a glyph's background-image is set once and
+// only background-position-x shifts to pick the digit, since swapping
+// background-image itself (the old per-digit-PNG approach) could still
+// force a decode/repaint on mobile even for an already-cached image, which
+// is what was causing the score to visibly flicker on every update
+const DIGIT_SHEET_FRAME_COUNT = 10;
+function digitSheet(folder) {
+  return { src: `Sprites/Sheets/${folder.toLowerCase()}-digits.png`, frameCount: DIGIT_SHEET_FRAME_COUNT };
 }
-GLYPH_SRCS.push("Sprites/Glyphs/Hiscore/hi.png");
+const GLYPH_SRCS = [digitSheet("Score").src, digitSheet("Hiscore").src, "Sprites/Glyphs/Hiscore/hi.png"];
 
 // display width/height for each variant AT DESKTOP SCALE, scaled 0.5x from
 // their native art (120px-wide canvases) to match the dino sprite's own
@@ -103,6 +109,7 @@ const DESKTOP_LAYOUT = {
   cactusGroupGapPx: 65, // cactus width (60) + a 1-artwork-pixel gap (5)
   cactusMinGapPx: 255, // dino width (85) * 3
   jumpPeakHeightPx: 170, // full peak height for a max-length hold
+  speedMultiplier: 1,
 };
 
 const MOBILE_LAYOUT = {
@@ -122,6 +129,12 @@ const MOBILE_LAYOUT = {
   // to dino-height ratio (was covering it, see body.mobile .score-display's
   // own comment in style.css for the other half of this fix)
   jumpPeakHeightPx: 85,
+  // the same pixel-speed obstacles use on desktop cross the much narrower
+  // mobile stage proportionally much faster (less reaction time), which
+  // read as the game running too fast — this slows obstacle movement (and,
+  // through nextSpawnDelayMs()'s speed-derived minGapDelayMs, the pacing
+  // that depends on it) to 3/4 speed on top of that
+  speedMultiplier: 0.75,
 };
 
 let layout = DESKTOP_LAYOUT;
@@ -283,24 +296,34 @@ let scoreIntervalId = null;
 function renderDigits(container, folder, number) {
   const digitCount = Math.max(MIN_SCORE_DIGITS, String(number).length);
   const digits = String(number).padStart(digitCount, "0");
+  const sheet = digitSheet(folder);
+  const backgroundImage = `url("${sheet.src}")`;
+  const backgroundSize = `${sheet.frameCount * 100}% 100%`;
 
   // updates only the glyphs that actually changed digit, instead of wiping
   // and recreating every glyph element on every tick (every SCORE_TICK_MS)
   // — since score only ever increases by round amounts, most ticks don't
-  // change most digits at all, and the constant rebuild-from-scratch was
-  // what caused the score to visibly flicker on mobile
+  // change most digits at all
   while (container.children.length > digits.length) {
     container.lastElementChild.remove();
   }
   while (container.children.length < digits.length) {
-    container.appendChild(document.createElement("div")).className = "glyph";
+    const glyph = document.createElement("div");
+    glyph.className = "glyph";
+    glyph.style.backgroundImage = backgroundImage;
+    glyph.style.backgroundSize = backgroundSize;
+    container.appendChild(glyph);
   }
 
   [...digits].forEach((digit, i) => {
     const glyph = container.children[i];
     if (glyph.dataset.digit === digit) return;
     glyph.dataset.digit = digit;
-    glyph.style.backgroundImage = `url("Sprites/Glyphs/${folder}/${digit}.png")`;
+    // only ever shifts background-position-x on an already-loaded sheet —
+    // never reassigns background-image — since that reassignment (even to
+    // an already-cached PNG) was what caused the score to visibly flicker
+    // on every update on mobile
+    glyph.style.backgroundPositionX = `${(Number(digit) / (sheet.frameCount - 1)) * 100}%`;
   });
 }
 
@@ -559,7 +582,7 @@ let obstaclesActive = false;
 let obstacleLoopId = null;
 let obstacleLastFrameTime = null;
 let obstacleSpawnInMs = 0;
-let cactusSpeed = CACTUS_BASE_SPEED_PX_PER_SEC;
+let cactusSpeed = CACTUS_BASE_SPEED_PX_PER_SEC * layout.speedMultiplier;
 
 // obstacles spawn/fade in and despawn/fade out entirely in an off-screen
 // buffer so they're already fully opaque by the time they cross onto the
@@ -728,10 +751,11 @@ function obstacleLoop(timestamp) {
   obstacleLastFrameTime = timestamp;
 
   const survivedSeconds = (Date.now() - runStartTime) / 1000;
-  cactusSpeed = Math.min(
-    CACTUS_BASE_SPEED_PX_PER_SEC + survivedSeconds * CACTUS_SPEED_RAMP_PX_PER_SEC_PER_SEC,
-    CACTUS_MAX_SPEED_PX_PER_SEC
-  );
+  cactusSpeed =
+    Math.min(
+      CACTUS_BASE_SPEED_PX_PER_SEC + survivedSeconds * CACTUS_SPEED_RAMP_PX_PER_SEC_PER_SEC,
+      CACTUS_MAX_SPEED_PX_PER_SEC
+    ) * layout.speedMultiplier;
 
   // speeds up the run cycle gradually while actually running (a no-op via
   // retune() while jumping, since RUN_SHEET isn't the looping sheet then —
@@ -825,7 +849,7 @@ function resetGame() {
     obstacle.reflectionEl.remove();
   });
   obstacles.length = 0;
-  cactusSpeed = CACTUS_BASE_SPEED_PX_PER_SEC;
+  cactusSpeed = CACTUS_BASE_SPEED_PX_PER_SEC * layout.speedMultiplier;
 
   dinoSprite.classList.remove("knocked-back");
   dinoReflection.classList.remove("knocked-back");

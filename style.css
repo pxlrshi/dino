@@ -1,5 +1,12 @@
 * {
   box-sizing: border-box;
+  /* a mobile long-press otherwise shows a gray tap-highlight flash and/or a
+     text-selection/"save image" callout on the sprites — this is a game
+     surface, not readable content, so none of that should ever appear */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 html, body {
@@ -492,9 +499,11 @@ body.mobile .dino-reflection.intro-start {
   width: 40px;
   height: 55px;
   margin-right: -5px;
-  background-size: contain;
+  /* background-image/-size are set once in JS (see digitSheet() in
+     script.js) to a combined 0-9 sheet; only background-position-x moves
+     after that, same technique as the dino/cactus sprite sheets */
   background-repeat: no-repeat;
-  background-position: center;
+  background-position-y: 0;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
