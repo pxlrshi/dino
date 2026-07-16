@@ -434,12 +434,20 @@ body.mobile .dino-reflection.intro-start {
 
 .fade-in-right {
   opacity: 0;
+  /* belt-and-suspenders alongside opacity: 0 — on some mobile browsers, an
+     element with a background-image can briefly paint at full opacity the
+     moment it's first promoted to its own compositor layer (e.g. right as
+     that image finishes decoding), which showed up as the score numbers
+     flashing on page load before the game had even started; visibility:
+     hidden skips painting the element altogether, sidestepping that */
+  visibility: hidden;
   transform: translateX(16px);
-  transition: opacity 500ms ease-out, transform 500ms ease-out;
+  transition: opacity 500ms ease-out, transform 500ms ease-out, visibility 0s linear 0s;
 }
 
 .score-display.visible .fade-in-right {
   opacity: 1;
+  visibility: visible;
   transform: translateX(0);
 }
 
